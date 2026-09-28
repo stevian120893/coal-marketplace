@@ -1,36 +1,94 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Coal Marketplace MVP
 
-## Getting Started
+## Purpose
 
-First, run the development server:
+This is a private B2B coal trading portal.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+The initial target users are existing coal traders/customers.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The goal is to simplify the existing WhatsApp-based coal ordering process.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## MVP Flow
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Admin creates a coal listing.
 
-## Learn More
+Admin can associate a buyer with a secure magic link.
 
-To learn more about Next.js, take a look at the following resources:
+Buyer receives the link through WhatsApp.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Buyer opens the link without manually logging in.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Buyer can:
 
-## Deploy on Vercel
+- View coal specifications
+- View COA
+- View coal photos
+- Request a quotation
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+When a buyer submits a quotation request:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- The request is stored in the database.
+- Admin receives a notification through email.
+- Admin receives a WhatsApp notification.
+
+Admin can:
+
+- Manage buyers
+- Manage coal listings
+- Manage coal specifications
+- Upload/manage COA
+- Upload/manage photos
+- View quotation requests
+- View transactions
+- Filter transactions
+- Update transaction status
+
+## MVP Scope
+
+Included:
+
+- Admin authentication
+- Buyer management
+- Coal listing CRUD
+- Coal specifications
+- COA upload
+- Coal photo upload
+- Secure buyer magic links
+- Buyer coal detail page
+- Request quotation
+- Admin quotation management
+- Transaction status management
+- Email notification
+- WhatsApp notification
+
+Not included yet:
+
+- Online payment
+- Payment gateway
+- Logistics tracking
+- Open marketplace
+- Trader-to-trader marketplace
+- Mobile application
+- Complex credit scoring
+- Public registration
+
+## Technology
+
+Frontend:
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+
+Backend:
+- Next.js server-side functionality / API
+
+Database:
+- PostgreSQL
+
+ORM:
+- Prisma
+
+Architecture goal:
+
+Keep the MVP simple, maintainable, and easy to migrate to another hosting provider later.
