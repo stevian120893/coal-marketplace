@@ -21,6 +21,7 @@ model User {
   accessTokens  AccessToken[]
   quoteRequests QuoteRequest[]
   transactions  Transaction[]
+  adminSessions AdminSession[]
 
   @@index([status])
   @@index([phone])
@@ -28,30 +29,85 @@ model User {
 }
 
 /// A coal lot offered for sale.
+///
+/// The commercial types are ASALAN / FINE / LAMPI (null coalType = "not one of
+/// the branded no-spec types", e.g. a SPEC_COAL lot). `typeLabel` carries a
+/// free-text product label when the enum does not fit, so future products are
+/// not blocked by the type vocabulary.
 model CoalListing {
-  id            String         @id @default(cuid())
-  title         String
-  origin        String?
-  gar           Decimal?       @db.Decimal(5, 2)
-  tm            Decimal?       @db.Decimal(5, 2)
-  ash           Decimal?       @db.Decimal(5, 2)
-  sulfur        Decimal?       @db.Decimal(5, 2)
-  quantity      Decimal?       @db.Decimal(12, 3)
-  status        ListingStatus  @default(DRAFT)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  accessTokens  AccessToken[]
-  coa           COA[]
-  photos        CoalPhoto[]
-  quoteRequests QuoteRequest[]
-  transactions  Transaction[]
+  id             String              @id @default(cuid())
+  title          String
+  description    String?
+  /// LOW_NO_SPEC or SPEC_COAL. Nullable: a draft may not be classified yet.
+  category       CoalCategory?
+  /// ASALAN / FINE / LAMPI / OTHER. Nullable on purpose: a SPEC_COAL lot is not
+  /// any of the branded no-spec types, and a lot need not carry one at all.
+  coalType       CoalType?
+  /// Free-text product label, for example "5600 GAR". Used when `coalType` is
+  /// null or OTHER; the display layer prefers it over the enum in that case.
+  typeLabel      String?
+  origin         String?
+  /// How the price is handled. NEGOTIABLE is the only behaviour implemented.
+  /// FIXED is reserved for a future phase and must not be assumed to work yet.
+  pricingMode    PricingMode         @default(NEGOTIABLE)
+  quantity       Decimal?            @db.Decimal(12, 3)
+  status         ListingStatus       @default(DRAFT)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  accessTokens   AccessToken[]
+  coa            COA[]
+  photos         CoalPhoto[]
+  videos         CoalVideo[]
+  specifications CoalSpecification[]
+  quoteRequests  QuoteRequest[]
+  transactions   Transaction[]
+
+  // TRANSITIONAL backward-compatibility columns. The original fixed
+  // specification fields are kept because real listings already carry data in
+  // them. New listings should write to CoalSpecification instead; the read path
+  // merges these columns under the flexible model so nothing is lost. Once every
+  // listing has been migrated to CoalSpecification, these four columns can be
+  // dropped in a later migration.
+
+  /// Legacy GAR (kcal/kg, as received). Use CoalSpecification going forward.
+  gar    Decimal? @db.Decimal(6, 2)
+  /// Legacy total moisture (%). Use CoalSpecification going forward.
+  tm     Decimal? @db.Decimal(5, 2)
+  /// Legacy ash (%). Use CoalSpecification going forward.
+  ash    Decimal? @db.Decimal(5, 2)
+  /// Legacy sulfur (%). Use CoalSpecification going forward.
+  sulfur Decimal? @db.Decimal(5, 2)
 
   @@index([status])
   @@index([origin])
+  @@index([category])
+  @@index([coalType])
   @@index([createdAt])
 }
 
+/// A single flexible specification entry attached to a listing.
+///
+/// `value` is text on purpose: most entries are numbers ("5041", "8.5") but a
+/// spec may legitimately be descriptive ("Met/As received", "per sample"), and
+/// keeping it text avoids a schema change for each future specification the
+/// traders add (GAR, NAR, TM, Ash, Sulfur, HGI, ADB, ARB, ...).
+model CoalSpecification {
+  id            String      @id @default(cuid())
+  coalListingId String
+  name          String
+  value         String
+  unit          String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  coalListing   CoalListing @relation(fields: [coalListingId], references: [id], onDelete: Cascade)
+
+  @@index([coalListingId])
+}
+
 /// Certificate of Analysis document for a listing.
+/// COA is supporting information, not the definitive representation of the
+/// physical coal quality. Buyers should be told physical inspection is
+/// recommended before purchase.
 model COA {
   id            String      @id @default(cuid())
   coalListingId String
@@ -73,30 +129,58 @@ model CoalPhoto {
   @@index([coalListingId])
 }
 
-/// Single-use magic link granting one buyer access to one listing.
-/// Only the SHA-256 hash of the token is stored, never the token itself.
-model AccessToken {
+/// Video of a coal lot. Data model only for now: no upload or storage pipeline
+/// exists yet, so rows are expected to be created by a future milestone.
+model CoalVideo {
   id            String      @id @default(cuid())
-  userId        String
   coalListingId String
-  tokenHash     String      @unique
-  expiresAt     DateTime
-  revokedAt     DateTime?
+  fileUrl       String
   createdAt     DateTime    @default(now())
   coalListing   CoalListing @relation(fields: [coalListingId], references: [id], onDelete: Cascade)
-  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([coalListingId])
+}
+
+/// Magic link identifying ONE buyer across all shared listings.
+/// Only the SHA-256 hash of the token is stored, never the token itself.
+///
+/// A valid link identifies the buyer; the buyer then picks which listing to
+/// make an offer on (the link is NOT tied to a listing). `coalListingId` is
+/// kept nullable as a legacy column for tokens issued before this semantics:
+/// new buyer-wide tokens omit it entirely.
+model AccessToken {
+  id            String         @id @default(cuid())
+  userId        String
+  coalListingId String?
+  tokenHash     String         @unique
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  createdAt     DateTime       @default(now())
+  coalListing   CoalListing?   @relation(fields: [coalListingId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([coalListingId])
   @@index([expiresAt])
 }
 
-/// A buyer's request for a price on a listing.
+/// A buyer's initial commercial offer on a listing.
+///
+/// This is the buyer's first proposal, captured verbatim. Negotiation happens
+/// manually (WhatsApp/phone) outside the system; when buyer and seller agree,
+/// the final terms are recorded on the Transaction. `offerPrice` is therefore
+/// intentionally distinct from Transaction.price - the buyer offers
+/// 650,000 and the final deal may close at 680,000; both values are preserved.
+///
+/// `offerPrice` is nullable only to grandfather rows that predate this model.
+/// New offers must always set it (enforced by the API), and it must not be
+/// confused with Transaction.price.
 model QuoteRequest {
   id            String             @id @default(cuid())
   userId        String
   coalListingId String
   quantity      Decimal            @db.Decimal(12, 3)
+  offerPrice    Decimal?           @db.Decimal(14, 2)
   paymentTerms  String?
   notes         String?
   status        QuoteRequestStatus @default(PENDING)
@@ -112,7 +196,32 @@ model QuoteRequest {
   @@index([createdAt])
 }
 
-/// A confirmed sale arising from an accepted quote request.
+/// A console session for an authenticated admin operator.
+/// Only the SHA-256 hash of the session token is stored; the raw value exists
+/// solely in the admin's HTTP-only cookie and is never persisted or logged.
+model AdminSession {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// The final agreed deal: the authoritative commercial terms a buyer and seller
+/// settled on after manual negotiation.
+///
+/// price is the final agreed price per MT. It is a different concept from
+/// QuoteRequest.offerPrice (the buyer's initial proposal) and must be recorded
+/// separately - a buyer may offer Rp650,000/MT and the deal may close at
+/// Rp680,000/MT. The status lifecycle (PENDING -> CONFIRMED -> PROCESSING ->
+/// COMPLETED, or CANCELLED) is reserved for a future phase; only the data model
+/// is implemented here.
 model Transaction {
   id             String            @id @default(cuid())
   quoteRequestId String            @unique
@@ -150,9 +259,34 @@ enum ListingStatus {
   SOLD
 }
 
+/// Broad product family. LOW_NO_SPEC covers the branded no-spec types
+/// (ASALAN / FINE / LAMPI); SPEC_COAL covers specified trader products.
+enum CoalCategory {
+  LOW_NO_SPEC
+  SPEC_COAL
+}
+
+/// Branded commercial types sold today, plus OTHER for anything else.
+enum CoalType {
+  ASALAN
+  FINE
+  LAMPI
+  OTHER
+}
+
+/// How the listing's price is handled. NEGOTIABLE (default) is the only mode
+/// implemented; FIXED is reserved for a future phase.
+enum PricingMode {
+  NEGOTIABLE
+  FIXED
+}
+
+/// Lifecycle of a buyer's initial offer. Negotiation is manual and lives
+/// outside the system, so QUOTED does not exist: the seller never issues a
+/// digital quote or counter-offer here.
 enum QuoteRequestStatus {
   PENDING
-  QUOTED
+  IN_NEGOTIATION
   ACCEPTED
   REJECTED
   CANCELLED

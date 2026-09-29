@@ -33,8 +33,33 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# local database inspection / cleanup scripts
+#
+# Both talk to whatever DATABASE_URL points at and are NOT part of the
+# production deployment workflow:
+#   _inspect.mjs       prints raw rows, including AccessToken.tokenHash and
+#                      user email/phone (PII)
+#   _e2e-cleanup.mjs   issues deleteMany() against User and CoalListing
+# Keep them on the developer's machine; never ship or run them on the server.
+/_inspect.mjs
+/_e2e-cleanup.mjs
+
+# NOTE: tests/ is deliberately NOT ignored. `next build` type-checks the
+# tests/**/*.ts tree via the tsconfig "include" glob, so the suites must be
+# present in the repository at build time even though they never run in
+# production.
+
+# local AI / editor tooling (not application code)
+/.agents/
+/.claude/
+/.cursor/
+/.devin/
+
 # env files (can opt-in for committing if needed)
 .env*
+# ...except the template, which documents the admin login variables and holds
+# placeholder values only.
+!.env.example
 
 # vercel
 .vercel
