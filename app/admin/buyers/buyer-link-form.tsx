@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { withBasePath } from "@/lib/base-path";
 
 /**
  * Generate Buyer Link (buyer-wide).
@@ -32,7 +33,7 @@ export function BuyerLinkForm({ buyerId, buyerLabel }: BuyerLinkFormProps) {
     setState({ status: "submitting" });
 
     try {
-      const response = await fetch("/api/admin/access-links", {
+      const response = await fetch(withBasePath("/api/admin/access-links"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: buyerId }),

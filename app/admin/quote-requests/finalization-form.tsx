@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { withBasePath } from "@/lib/base-path";
 
 /**
  * "Finalisasi Kesepakatan" form for a buyer offer under negotiation.
@@ -68,7 +69,9 @@ export function FinalizationForm({
     let response: Response;
     try {
       response = await fetch(
-        `/api/admin/quote-requests/${encodeURIComponent(offerId)}/transaction`,
+        withBasePath(
+          `/api/admin/quote-requests/${encodeURIComponent(offerId)}/transaction`,
+        ),
         {
           method: "POST",
           headers: { "content-type": "application/json" },

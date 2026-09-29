@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ListingStatus } from "@/lib/quote-requests";
+import { withBasePath } from "@/lib/base-path";
 
 /**
  * Publish / unpublish / sold control for one listing.
@@ -51,7 +52,7 @@ export function ListingStatusControl({
   async function changeStatus(target: ListingStatus) {
     setState({ status: "submitting", statusTarget: target });
     const response = await fetch(
-      `/api/admin/listings/${encodeURIComponent(listingId)}`,
+      withBasePath(`/api/admin/listings/${encodeURIComponent(listingId)}`),
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { withBasePath } from "@/lib/base-path";
 
 /**
  * Buyer create / edit form (client).
@@ -58,10 +59,11 @@ export function BuyerForm({ mode, buyerId, initial }: BuyerFormProps) {
     event.preventDefault();
     setState({ status: "submitting" });
 
-    const url =
+    const url = withBasePath(
       mode === "create"
         ? "/api/admin/buyers"
-        : `/api/admin/buyers/${encodeURIComponent(buyerId ?? "")}`;
+        : `/api/admin/buyers/${encodeURIComponent(buyerId ?? "")}`,
+    );
 
     try {
       const response = await fetch(url, {

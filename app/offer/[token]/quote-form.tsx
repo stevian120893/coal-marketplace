@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { MAX_NOTES_LENGTH, MAX_OFFER_PRICE, MAX_PAYMENT_TERMS_LENGTH } from "@/lib/buyer-offer";
 import { buildOfferBody } from "@/lib/offer-payload";
+import { withBasePath } from "@/lib/base-path";
 
 /**
  * Buyer offer form. Posts to the quote endpoint, which derives the buyer from
@@ -129,7 +130,7 @@ export function QuoteForm({
 
     setState({ status: "submitting" });
     try {
-      const response = await fetch(`/api/offer/${encodeURIComponent(token)}/quote`, {
+      const response = await fetch(withBasePath(`/api/offer/${encodeURIComponent(token)}/quote`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { QuoteRequestStatus } from "@/lib/quote-requests";
+import { withBasePath } from "@/lib/base-path";
 import { statusLabel } from "./format";
 import { StatusBadge } from "./ui";
 
@@ -60,7 +61,7 @@ export function OfferStatusControl({
     let response: Response;
     try {
       response = await fetch(
-        `/api/admin/quote-requests/${encodeURIComponent(offerId)}`,
+        withBasePath(`/api/admin/quote-requests/${encodeURIComponent(offerId)}`),
         {
           method: "PATCH",
           headers: { "content-type": "application/json" },

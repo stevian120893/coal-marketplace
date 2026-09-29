@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { withBasePath } from "@/lib/base-path";
 
 /**
  * Sign-out control. Posts to /api/admin/logout, which revokes the session
@@ -16,7 +17,7 @@ export function LogoutButton() {
     setIsSubmitting(true);
 
     try {
-      await fetch("/api/admin/logout", { method: "POST" });
+      await fetch(withBasePath("/api/admin/logout"), { method: "POST" });
     } catch {
       // Even if the request fails, send the user to the login page; the
       // session is unusable client-side either way.

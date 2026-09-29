@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { withBasePath } from "@/lib/base-path";
 
 /**
  * Admin sign-in form.
@@ -30,7 +31,7 @@ export function LoginForm() {
     setError(null);
 
     try {
-      const response = await fetch("/api/admin/login", {
+      const response = await fetch(withBasePath("/api/admin/login"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim(), password }),

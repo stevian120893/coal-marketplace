@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { TransactionStatus } from "@/lib/quote-requests";
+import { withBasePath } from "@/lib/base-path";
 import { TransactionStatusBadge } from "./ui";
 import { transactionStatusLabel } from "../quote-requests/format";
 
@@ -62,7 +63,7 @@ export function TransactionStatusControl({
     let response: Response;
     try {
       response = await fetch(
-        `/api/admin/transactions/${encodeURIComponent(transactionId)}`,
+        withBasePath(`/api/admin/transactions/${encodeURIComponent(transactionId)}`),
         {
           method: "PATCH",
           headers: { "content-type": "application/json" },

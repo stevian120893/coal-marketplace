@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AdminListingDetail } from "@/lib/quote-requests";
+import { withBasePath } from "@/lib/base-path";
 
 /**
  * Listing create / edit form (client).
@@ -141,10 +142,11 @@ export function ListingForm({ mode, listingId, initial }: ListingFormProps) {
     event.preventDefault();
     setState({ status: "submitting" });
 
-    const url =
+    const url = withBasePath(
       mode === "create"
         ? "/api/admin/listings"
-        : `/api/admin/listings/${encodeURIComponent(listingId ?? "")}`;
+        : `/api/admin/listings/${encodeURIComponent(listingId ?? "")}`,
+    );
 
     try {
       const response = await fetch(url, {
