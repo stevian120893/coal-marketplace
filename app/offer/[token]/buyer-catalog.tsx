@@ -92,9 +92,12 @@ function groupListings(listings: BuyerListing[]): ListingGroup[] {
 function ListingCard({
   token,
   listing,
+  companyName,
 }: {
   token: string;
   listing: BuyerListing;
+  /** The current buyer's company name, for the WhatsApp offer follow-up. */
+  companyName: string | null;
 }) {
   const isSold = listing.status === "SOLD";
   const hasQuantity =
@@ -145,6 +148,7 @@ function ListingCard({
             token={token}
             listingId={listing.id}
             listingTitle={listing.title}
+            companyName={companyName}
             availableQuantity={availableQuantityValue}
             availableQuantityLabel={availableQuantityLabel}
           />
@@ -160,6 +164,12 @@ export function BuyerCatalog({ token, buyer, listings }: BuyerCatalogProps) {
   const selected = groups.find((group) => group.key === selectedKey) ?? groups[0];
 
   const greeting = buyer.name?.trim() || buyer.companyName?.trim() || "";
+
+  // The identity used to sign the WhatsApp follow-up message on the submitted
+  // offer: company name first, contact name as a fallback. Sourced from the
+  // token-scoped page data, i.e. always this buyer's own identity.
+  const offerSenderIdentity =
+    buyer.companyName?.trim() || buyer.name?.trim() || null;
 
   if (groups.length === 0) {
     return (
@@ -241,7 +251,12 @@ export function BuyerCatalog({ token, buyer, listings }: BuyerCatalogProps) {
             </span>
           </p>
           {selected.listings.map((listing) => (
-            <ListingCard key={listing.id} token={token} listing={listing} />
+            <ListingCard
+              key={listing.id}
+              token={token}
+              listing={listing}
+              companyName={offerSenderIdentity}
+            />
           ))}
         </>
       ) : (

@@ -1,18 +1,51 @@
 /**
- * WhatsApp deep links for the seller -> buyer direction.
+ * WhatsApp deep links for the human conversations around a deal.
  *
  * The marketplace never sends a WhatsApp message. There is no provider, no
  * Business API, no webhook, no backend sender: WhatsApp communication is done
  * by the humans themselves in their own WhatsApp application. This module only
- * builds the `https://wa.me/...` deep link with a prefilled message, which opens
- * the buyer's chat with the deal details already typed out for the seller to
- * press send.
+ * builds `https://wa.me/...` deep links with a prefilled message, which opens
+ * the right chat with the details already typed out for the sender to press
+ * send.
  *
- * Pure module: the message is generated from the trusted Transaction + Buyer +
- * Listing records serialised as plain strings, so every rule is unit-testable
- * and no secret ever reaches the link (no AccessToken, no session, no
- * credentials).
+ * Two directions, one pure module:
+ *
+ *   - buyer -> seller: once the buyer's offer is stored, the buyer follows up
+ *     with the seller (buildBuyerOfferMessage / buildOfferWhatsAppUrl).
+ *   - seller -> buyer: when a deal is finalized, the seller opens the buyer's
+ *     chat with the deal details (buildFinalDealMessage /
+ *     buildSendDealWhatsAppUrl).
+ *
+ * Pure module: both messages are generated from plain serialisable data (never
+ * from the database directly), so every rule is unit-testable and no secret
+ * ever reaches the link (no AccessToken, no session, no credentials).
  */
+
+/**
+ * The seller's WhatsApp number, as the digits-only international dial string
+ * wa.me expects. TEMPORARY: a single seller serves every buyer for now; when
+ * multi-seller support lands, this moves onto the Listing/Seller record and
+ * the buyer offer follow-up starts reading it from there.
+ */
+export const SELLER_WHATSAPP_NUMBER = "62818232332";
+
+export type BuyerOfferMessageData = {
+  /** Buyer company name (contact name as a fallback); line omitted when absent. */
+  companyName: string | null;
+  listingTitle: string;
+  quantity: number;
+  offerPrice: number;
+  paymentTerms: string | null;
+  notes: string | null;
+};
+
+const PRICE_FORMAT = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 2,
+});
+
+const QUANTITY_FORMAT = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 3,
+});
 
 export type FinalDealMessageData = {
   /** Buyer contact name; falls back to "Pembeli" when missing. */
@@ -25,14 +58,6 @@ export type FinalDealMessageData = {
   transactionId: string;
 };
 
-const PRICE_FORMAT = new Intl.NumberFormat("en-US", {
-  maximumFractionDigits: 2,
-});
-
-const QUANTITY_FORMAT = new Intl.NumberFormat("en-US", {
-  maximumFractionDigits: 3,
-});
-
 /** The number - possibly "2000.000" from a DECIMAL column - as "2,000.5". */
 function formatQuantity(value: string): string {
   const parsed = Number(value);
@@ -43,6 +68,55 @@ function formatQuantity(value: string): string {
 function formatPrice(value: string): string {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? PRICE_FORMAT.format(parsed) : value;
+}
+
+/**
+ * The prefilled follow-up message the buyer sends to the seller after their
+ * offer was stored. Natural business copy in Bahasa Indonesia that restates
+ * the submitted offer: the listing, the quantity, the buyer's offer price,
+ * and - when provided - the payment terms, notes and buyer company name. This
+ * is the buyer's own message composed in their own WhatsApp app; the system
+ * never sends anything itself.
+ */
+export function buildBuyerOfferMessage(data: BuyerOfferMessageData): string {
+  const lines = [
+    "Halo, saya ingin menindaklanjuti penawaran pembelian batubara berikut:",
+    "",
+  ];
+
+  if (data.companyName !== null && data.companyName.trim() !== "") {
+    lines.push("Perusahaan:", data.companyName.trim(), "");
+  }
+
+  lines.push(
+    "Batubara:",
+    data.listingTitle.trim(),
+    "",
+    "Kuantitas:",
+    `${formatQuantity(String(data.quantity))} MT`,
+    "",
+    "Harga Penawaran:",
+    `Rp ${formatPrice(String(data.offerPrice))} / MT`,
+  );
+
+  if (data.paymentTerms !== null && data.paymentTerms.trim() !== "") {
+    lines.push("", "Syarat Pembayaran:", data.paymentTerms.trim());
+  }
+  if (data.notes !== null && data.notes.trim() !== "") {
+    lines.push("", "Catatan:", data.notes.trim());
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * The buyer -> seller deep link to the fixed seller number, prefilled with the
+ * offer summary the buyer just submitted. A plain wa.me URL; no API call is
+ * made anywhere, the browser/device opens it directly.
+ */
+export function buildOfferWhatsAppUrl(data: BuyerOfferMessageData): string {
+  const message = buildBuyerOfferMessage(data);
+  return `https://wa.me/${SELLER_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
 }
 
 /**

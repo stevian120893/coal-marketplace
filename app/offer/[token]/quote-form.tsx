@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { MAX_NOTES_LENGTH, MAX_OFFER_PRICE, MAX_PAYMENT_TERMS_LENGTH } from "@/lib/buyer-offer";
 import { buildOfferBody } from "@/lib/offer-payload";
+import { buildOfferWhatsAppUrl } from "@/lib/whatsapp";
 import { withBasePath } from "@/lib/base-path";
 
 /**
@@ -17,7 +18,10 @@ import { withBasePath } from "@/lib/base-path";
  * On success the form switches to a confirmation panel inside the dialog: it
  * restates the selected listing and what was submitted, and explicitly says
  * the seller will follow up. Nothing here implies an order or transaction -
- * only an offer was made.
+ * only an offer was made. Once the offer API has answered 201, the page also
+ * navigates to the seller's WhatsApp (wa.me) with the submitted offer
+ * prefilled, so the buyer can follow up immediately. The navigation happens
+ * strictly after the API succeeds - a failed submission never opens WhatsApp.
  */
 
 function formatNumber(value: number, fractionDigits: number): string {
@@ -30,6 +34,10 @@ type QuoteFormProps = {
   token: string;
   listingId: string;
   listingTitle: string;
+  /** The submitting buyer's company name (contact name fallback), for the
+   *  WhatsApp follow-up. Comes from the token-scoped page data, so it is
+   *  always this buyer's own identity, never another buyer's. */
+  companyName: string | null;
   availableQuantity: number | null;
   availableQuantityLabel: string;
   onClose: () => void;
@@ -63,6 +71,7 @@ export function QuoteForm({
   token,
   listingId,
   listingTitle,
+  companyName,
   availableQuantity,
   availableQuantityLabel,
   onClose,
@@ -153,6 +162,23 @@ export function QuoteForm({
           },
         });
         onSubmitted(data.quoteRequest.id);
+
+        // The offer is stored: now open the seller's WhatsApp with the offer
+        // prefilled. This is strictly after the API succeeded and never runs
+        // on failure. wa.me is a plain deep link - no provider, no backend
+        // message. window.open() would be popup-blocked (the user activation
+        // from the click is long gone after the await), so navigate the
+        // current tab directly, which works reliably after async submits.
+        window.location.assign(
+          buildOfferWhatsAppUrl({
+            companyName,
+            listingTitle,
+            quantity: parsedQuantity,
+            offerPrice: parsedPrice,
+            paymentTerms: body.paymentTerms,
+            notes: body.notes,
+          }),
+        );
         return;
       }
 

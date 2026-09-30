@@ -34,6 +34,7 @@ const suites = [
   "./unit/listing-status.test.ts",
   "./unit/access-links.test.ts",
   "./unit/offer-link.test.ts",
+  "./unit/form-submit-state.test.ts",
   "./integration/offer-flow.test.ts",
   "./integration/admin-flow.test.ts",
   "./integration/transaction-flow.test.ts",

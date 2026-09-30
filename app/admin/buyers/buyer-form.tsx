@@ -65,6 +65,13 @@ export function BuyerForm({ mode, buyerId, initial }: BuyerFormProps) {
         : `/api/admin/buyers/${encodeURIComponent(buyerId ?? "")}`,
     );
 
+    // The finally block always exits the loading state, so the button can
+    // never stay stuck on "Menyimpan…". On edit, router.refresh() re-renders
+    // the server data but deliberately keeps this component's useState intact,
+    // so an edit that never reset "submitting" would leave the form disabled
+    // forever even though the save succeeded.
+    let errorMessage: string | null = null;
+
     try {
       const response = await fetch(url, {
         method: mode === "create" ? "POST" : "PATCH",
@@ -82,7 +89,7 @@ export function BuyerForm({ mode, buyerId, initial }: BuyerFormProps) {
         } catch {
           // Keep the default message when the body is not JSON.
         }
-        setState({ status: "error", message });
+        errorMessage = message;
         return;
       }
 
@@ -96,10 +103,13 @@ export function BuyerForm({ mode, buyerId, initial }: BuyerFormProps) {
         router.refresh();
       }
     } catch {
-      setState({
-        status: "error",
-        message: "Tidak dapat menghubungi server. Silakan coba lagi.",
-      });
+      errorMessage = "Tidak dapat menghubungi server. Silakan coba lagi.";
+    } finally {
+      setState(
+        errorMessage === null
+          ? { status: "idle" }
+          : { status: "error", message: errorMessage },
+      );
     }
   }
 

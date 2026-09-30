@@ -18,6 +18,7 @@ const suites = [
   "./unit/listing-status.test.ts",
   "./unit/access-links.test.ts",
   "./unit/offer-link.test.ts",
+  "./unit/form-submit-state.test.ts",
   "./unit/base-path.test.ts",
 ];
 for (const suite of suites) {

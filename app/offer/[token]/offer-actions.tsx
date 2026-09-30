@@ -13,7 +13,9 @@ import { QuoteForm } from "./quote-form";
  *
  * The token is passed in as a prop purely to build the request path. It is
  * never rendered, and it is already part of this URL, so nothing new is
- * exposed to the page.
+ * exposed to the page. `companyName` is this buyer's own identity from the
+ * token-scoped page data, used to sign the WhatsApp follow-up message - it is
+ * never the data of another buyer.
  */
 type OfferActionsProps = {
   token: string;
@@ -21,6 +23,7 @@ type OfferActionsProps = {
   availableQuantity: number | null;
   availableQuantityLabel: string;
   listingTitle: string;
+  companyName: string | null;
 };
 
 export function OfferActions({
@@ -29,6 +32,7 @@ export function OfferActions({
   availableQuantity,
   availableQuantityLabel,
   listingTitle,
+  companyName,
 }: OfferActionsProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -67,13 +71,14 @@ export function OfferActions({
         ref={dialogRef}
         onClose={() => setIsOpen(false)}
         aria-labelledby="quote-form-title"
-        className="w-[min(28rem,calc(100vw-2rem))] rounded-xl border border-slate-200 bg-white p-0 text-slate-900 backdrop:bg-slate-900/50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50"
+        className="fixed inset-0 m-auto max-h-[calc(100vh-2rem)] w-[min(28rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-slate-200 bg-white p-0 text-slate-900 backdrop:bg-slate-900/50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50"
       >
         {isOpen ? (
           <QuoteForm
             token={token}
             listingId={listingId}
             listingTitle={listingTitle}
+            companyName={companyName}
             availableQuantity={availableQuantity}
             availableQuantityLabel={availableQuantityLabel}
             onClose={() => {
